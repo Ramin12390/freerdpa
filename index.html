@@ -381,18 +381,29 @@
         function copyRef() { navigator.clipboard.writeText(`https://t.me/Loading_of_bot/app?startapp=${state.userId}`).then(()=>tg.showAlert('Kopyalandı!')); }
 
         function handleAds() {
-            // Adsgram Block ID eklendi
             const blockId = "25018"; 
-            if (!window.Adsgram) return tg.showAlert("Reklam servisi yüklenemedi.");
+            
+            // Adsgram SDK kontrolü
+            if (!window.Adsgram) {
+                tg.showAlert("Reklam SDK yüklenemedi. Lütfen internet bağlantınızı kontrol edin.");
+                return;
+            }
 
+            // Adsgram Başlatma
             const AdController = window.Adsgram.init({ blockId: blockId });
-            AdController.show().then(() => {
+            
+            AdController.show().then((result) => {
+                // Reklam başarıyla izlendi
                 state.energy = state.maxEnergy;
                 sync();
-                tg.showAlert("Harika! Enerjin tamamen doldu.");
-            }).catch((err) => {
-                tg.showAlert("Şu an izlenecek reklam yok veya bir hata oluştu.");
-                console.error(err);
+                tg.showAlert("Tebrikler! Enerjin tamamen dolduruldu.");
+                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            }).catch((result) => {
+                // Reklam izlenemedi (Hata, Skip veya No Ads)
+                let errorMsg = "Şu an uygun reklam yok. Biraz sonra tekrar deneyin.";
+                if (result.error) errorMsg = "Reklam sunucusuyla bağlantı kurulamadı.";
+                tg.showAlert(errorMsg);
+                console.error("Adsgram Error:", result);
             });
         }
 
