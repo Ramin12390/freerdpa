@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Loading...</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://adsgram.ai/sdk.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0c0c0c;
+            --surface: #141414;
+            --accent: #ffffff;
+            --muted: #888888;
+            --red: #ff3e3e;
+            --font-main: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            background-color: var(--bg);
+            color: var(--accent);
+            font-family: var(--font-main);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999; transition: opacity 0.5s ease;
+        }
+        .loading-bar-container { width: 70%; height: 4px; background: #222; margin-top: 30px; overflow: hidden; border: 1px solid #333; }
+        .loading-bar-progress { width: 40%; height: 100%; background: var(--accent); animation: initial-load 1.5s infinite ease-in-out; }
+        @keyframes initial-load { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+
+        .dots::after { content: ''; animation: dots-anim 1.5s infinite; }
+        @keyframes dots-anim { 0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; } }
+
+        /* General Layout */
+        header { padding: 20px 25px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .brand h1 { font-size: 1.4rem; letter-spacing: -1px; text-transform: uppercase; }
+        .brand p { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
+
+        main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; }
+        
+        .counter-group { text-align: center; margin-bottom: 20px; }
+        .balance-value { font-family: var(--font-mono); font-size: 3.5rem; line-height: 1; }
+        .balance-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 4px; margin-top: 10px; }
+
+        .stats-bar { width: 90%; display: flex; gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--surface); border: 1px solid #222; padding: 10px; text-align: center; flex: 1; }
+        .stat-label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+        .stat-value { font-family: var(--font-mono); font-size: 0.8rem; }
+
+        /* The Box (Coin Replacement) */
+        .tap-target { position: relative; width: 220px; height: 220px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        .coin-wrapper { width: 100%; height: 100%; border: 1px solid #333; display: flex; justify-content: center; align-items: center; background: var(--surface); transition: transform 0.05s; }
+        .coin-wrapper:active { transform: scale(0.96); border-color: var(--accent); }
+        .coin-img { width: 140px; height: 140px; filter: grayscale(1); opacity: 0.9; }
+
+        .tap-feedback { position: absolute; font-family: var(--font-mono); font-size: 1.4rem; color: var(--accent); pointer-events: none; animation: fly-up 0.8s forwards; z-index: 1001; }
+        @keyframes fly-up { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
+
+        /* Bottom Controls */
+        .controls { padding: 20px; background: var(--surface); border-top: 1px solid #222; }
+        .sabir-meter { margin-bottom: 15px; }
+        .sabir-label { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 6px; }
+        .progress-track { width: 100%; height: 5px; background: #222; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s ease; }
+
+        nav { display: grid; grid-template-columns: repeat(5, 1fr); padding-top: 10px; }
+        .nav-item { padding: 5px; text-align: center; font-size: 0.7rem; color: var(--muted); text-transform: uppercase; cursor: pointer; }
+        .nav-item.active { color: var(--accent); font-weight: bold; }
+
+        /* Panels */
+        .panel { display: none; position: absolute; inset: 0; background: var(--bg); padding: 30px 20px; z-index: 1000; overflow-y: auto; }
+        .panel.visible { display: block; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #222; padding-bottom: 10px; }
+        .panel-close { font-family: var(--font-mono); font-size: 0.8rem; color: var(--red); cursor: pointer; }
+
+        .btn-raw { display: block; width: 100%; padding: 15px; background: var(--accent); color: var(--bg); border: none; font-family: var(--font-main); font-weight: 700; text-transform: uppercase; text-align: center; cursor: pointer; margin-bottom: 15px; font-size: 0.85rem; }
+        .btn-raw.locked { background: #333; color: #666; cursor: not-allowed; }
+        
+        .ref-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 10px; border-bottom: 1px solid #222; font-family: var(--font-mono); font-size: 0.8rem; cursor: pointer; }
+        .ref-item:active { background: #1a1a1a; }
+
+        .rank-item { display: flex; justify-content: space-between; padding: 12px; font-family: var(--font-mono); font-size: 0.85rem; border-bottom: 1px solid #1a1a1a; }
+        .rank-pos { color: var(--muted); width: 30px; }
+        .rank-user { flex: 1; }
+        .rank-val { color: var(--accent); font-weight: bold; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <h2 style="font-family: var(--font-mono); font-size: 1.1rem; letter-spacing: 4px;">LOADING<span class="dots"></span></h2>
+        <div class="loading-bar-container"> <div class="loading-bar-progress"></div> </div>
+        <p style="margin-top: 20px; color: var(--accent); font-size: 0.95rem;">Sistem Hazırlanıyor</p>
+    </div>
+
+    <!-- Independent Failsafe Script -->
+    <script>
+        setTimeout(function() {
+            var loader = document.getElementById('loading-screen');
+            if(loader && !loader.classList.contains('hidden')) {
+                loader.style.opacity = '0';
+                setTimeout(function() { loader.classList.add('hidden'); }, 500);
+            }
+        }, 3500);
+    </script>
+
+    <header>
+        <div class="brand">
+            <h1>LOADING<span class="dots"></span></h1>
+            <p id="user-display">Bağlantı Kuruluyor...</p>
+        </div>
+        <div id="sync-status" style="font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted);">SYNC: OK</div>
+    </header>
+
+    <main>
+        <div class="counter-group">
+            <div class="balance-value" id="val-balance">0</div>
+            <div class="balance-label">$LOADING</div>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-label">Saatlik Kâr</div>
+                <div class="stat-value" id="val-pph">+0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Tık Gücü</div>
+                <div class="stat-value" id="val-tap">1</div>
+            </div>
+            <div class="stat-card" style="border-color: var(--muted); cursor: pointer;" onclick="handleAds()">
+                <div class="stat-label" style="color: var(--accent);">Reklam</div>
+                <div class="stat-value" style="font-size: 0.6rem; color: var(--muted);">ENERJİ +</div>
+            </div>
+        </div>
+
+        <div class="tap-target" id="tap-trigger">
+            <div class="coin-wrapper">
+                <img src="./loadinglogo.png" alt="Logo" class="coin-img">
+            </div>
+        </div>
+    </main>
+
+    <!-- Upgrades Panel -->
+    <div id="panel-upgrades" class="panel">
+        <div class="panel-header"> <h3>Donanım Geliştir</h3> <div class="panel-close" onclick="closePanels()">[KAPAT]</div> </div>
+        
+        <div class="btn-raw" onclick="upgrade('cpu')">CPU LEVEL <span id="cpu-lvl">0</span><br><small id="cpu-cost">5,000 Puan</small></div>
+        <p style="font-size: 0.7rem; color: var(--muted); margin-bottom: 20px; text-align: center;">Saatlik pasif geliri artırır.</p>
+
+        <div class="btn-raw" onclick="upgrade('ram')">RAM LEVEL <span id="ram-lvl">0</span><br><small id="ram-cost">10,000 Puan</small></div>
+        <p style="font-size: 0.7rem; color: var(--muted); margin-bottom: 20px; text-align: center;">Maksimum enerji sınırını artırır.</p>
+
+        <div class="btn-raw" onclick="upgrade('ssd')">SSD LEVEL <span id="ssd-lvl">0</span><br><small id="ssd-cost">7,500 Puan</small></div>
+        <p style="font-size: 0.7rem; color: var(--muted); margin-bottom: 20px; text-align: center;">Tıklama başına kazancı artırır.</p>
+    </div>
+
+    <!-- Daily Bonus Panel -->
+    <div id="panel-bonus" class="panel">
+        <div class="panel-header"> <h3>Günlük Bonus</h3> <div class="panel-close" onclick="closePanels()">[KAPAT]</div> </div>
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 id="bonus-streak" style="font-size: 3rem;">0</h1>
+            <p style="color: var(--muted);">Ardışık Gün</p>
+        </div>
+        <div id="bonus-btn" class="btn-raw" onclick="claimBonus()">BONUSU ŞİMDİ AL</div>
+        <p id="bonus-info" style="font-size: 0.8rem; text-align: center; color: var(--muted);">Bir sonraki ödül için sabret.</p>
+    </div>
+
+    <!-- Leaderboard Panel -->
+    <div id="panel-rank" class="panel">
+        <div class="panel-header"> <h3>Top 10 Sabırlı</h3> <div class="panel-close" onclick="closePanels()">[KAPAT]</div> </div>
+        <div id="rank-list"></div>
+    </div>
+
+    <!-- Referral & Social panels remain similar but updated inside logic -->
+    <div id="panel-ref" class="panel">
+        <div class="panel-header"> <h3>Davet Et</h3> <div class="panel-close" onclick="closePanels()">[KAPAT]</div> </div>
+        <div class="ref-item"> <span>Toplam Referans</span> <span id="ref-count">0</span> </div>
+        <div class="btn-raw" onclick="shareRef()">BAĞLANTIYI PAYLAŞ</div>
+        <div class="btn-raw" style="background: transparent; color: white; border: 1px solid #333;" onclick="copyRef()">LİNKİ KOPYALA</div>
+    </div>
+
+    <div class="controls">
+        <div class="sabir-meter">
+            <div class="sabir-label"> <span id="energy-label">ENERJİ</span> <span id="val-sabir">1000 / 1000</span> </div>
+            <div class="progress-track"> <div class="progress-fill" id="val-progress"></div> </div>
+        </div>
+        <nav>
+            <div class="nav-item active" onclick="location.reload()">SİSTEM</div>
+            <div class="nav-item" onclick="openPanel('upgrades')">DONANIM</div>
+            <div class="nav-item" onclick="openPanel('bonus')">BONUS</div>
+            <div class="nav-item" onclick="openPanel('rank')">LİSTE</div>
+            <div class="nav-item" onclick="openPanel('ref')">DAVET</div>
+        </nav>
+    </div>
+
+    <script>
+        const CONFIG = {
+            SUPABASE_URL: 'https://euuqkwgltmxfjhwojxdk.supabase.co',
+            SUPABASE_KEY: 'sb_publishable_QIuSOvroO2uqcHz3EYVOzA_TQIgAWjF',
+            SYNC_INTERVAL: 8000,
+            ENERGY_PER_SEC: 0.3
+        };
+
+        const tg = window.Telegram.WebApp;
+        let sb = null;
+        let state = {
+            balance: 0, energy: 1000, maxEnergy: 1000,
+            cpuLvl: 0, ramLvl: 0, ssdLvl: 0,
+            pph: 0, tapVal: 1, streak: 0, canBonus: false,
+            userId: 0, userName: '', unsynced: 0, isSyncing: false
+        };
+
+        const ui = {
+            balance: document.getElementById('val-balance'),
+            pph: document.getElementById('val-pph'),
+            tap: document.getElementById('val-tap'),
+            sabir: document.getElementById('val-sabir'),
+            progress: document.getElementById('val-progress'),
+            user: document.getElementById('user-display'),
+            loader: document.getElementById('loading-screen')
+        };
+
+        async function init() {
+            if (window.supabase) sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+            const tUser = tg.initDataUnsafe?.user;
+            if (tUser) { 
+                state.userId = tUser.id; 
+                state.userName = tUser.username || `User_${tUser.id}`; 
+            } else { 
+                // Misafirler için kalıcı ID oluştur (Engelleme, özgür bırak)
+                let guestId = localStorage.getItem('loading_guest_id');
+                if (!guestId) {
+                    guestId = Math.floor(Math.random() * 1000000000); // Rastgele bık büyük ID
+                    localStorage.setItem('loading_guest_id', guestId);
+                }
+                state.userId = parseInt(guestId);
+                state.userName = "Misafir_" + state.userId.toString().substring(0,4); 
+            }
+            ui.user.textContent = `@${state.userName}`;
+
+            try { if (sb) await sync(); } catch(e){}
+            finally {
+                setInterval(updateLoops, 100);
+                setInterval(() => { if(state.unsynced !== 0) sync(); }, CONFIG.SYNC_INTERVAL);
+                setTimeout(() => { ui.loader.style.opacity='0'; setTimeout(()=>ui.loader.classList.add('hidden'), 500); }, 2000);
+            }
+        }
+
+        async function sync() {
+            if (state.isSyncing || !sb) return;
+            state.isSyncing = true;
+            document.getElementById('sync-status').textContent = 'SYNC...';
+
+            const { data, error } = await sb.rpc('sync_and_click', {
+                p_telegram_id: state.userId, p_username: state.userName,
+                p_click_count: state.unsynced, p_cpu_level: state.cpuLvl,
+                p_ram_level: state.ramLvl, p_ssd_level: state.ssdLvl
+            });
+
+            if (!error && data?.[0]) {
+                const r = data[0];
+                state.balance = r.out_balance;
+                state.energy = r.out_energy;
+                state.maxEnergy = r.out_max_energy;
+                state.cpuLvl = r.out_cpu_level;
+                state.ramLvl = r.out_ram_level;
+                state.ssdLvl = r.out_ssd_level;
+                state.pph = r.out_profit_per_hour;
+                state.streak = r.out_streak;
+                state.canBonus = r.out_can_check_in;
+                state.tapVal = 1 + state.ssdLvl;
+                state.unsynced = 0;
+                refreshUI();
+            }
+            state.isSyncing = false;
+            document.getElementById('sync-status').textContent = 'SYNC: OK';
+        }
+
+        function updateLoops() {
+            const refill = CONFIG.ENERGY_PER_SEC + (state.cpuLvl * 0.2);
+            if (state.energy < state.maxEnergy) state.energy = Math.min(state.maxEnergy, state.energy + (refill / 10));
+            if (state.pph > 0) state.balance += (state.pph / 3600) / 10;
+            refreshUI();
+        }
+
+        function refreshUI() {
+            ui.balance.textContent = Math.floor(state.balance).toLocaleString();
+            ui.pph.textContent = `+${state.pph.toLocaleString()}`;
+            ui.tap.textContent = state.tapVal;
+            ui.sabir.textContent = `${Math.floor(state.energy)} / ${state.maxEnergy}`;
+            ui.progress.style.width = `${(state.energy / state.maxEnergy) * 100}%`;
+
+            // Panel UI updates
+            document.getElementById('cpu-lvl').textContent = state.cpuLvl;
+            document.getElementById('ram-lvl').textContent = state.ramLvl;
+            document.getElementById('ssd-lvl').textContent = state.ssdLvl;
+            document.getElementById('cpu-cost').textContent = `${(5000 + state.cpuLvl*5000).toLocaleString()} Puan`;
+            document.getElementById('ram-cost').textContent = `${(10000 + state.ramLvl*10000).toLocaleString()} Puan`;
+            document.getElementById('ssd-cost').textContent = `${(7500 + state.ssdLvl*7500).toLocaleString()} Puan`;
+            
+            document.getElementById('bonus-streak').textContent = state.streak;
+            const bBtn = document.getElementById('bonus-btn');
+            if(state.canBonus) { bBtn.classList.remove('locked'); bBtn.textContent="BONUSU AL"; }
+            else { bBtn.classList.add('locked'); bBtn.textContent="BEKLEMEDE"; }
+        }
+
+        document.getElementById('tap-trigger').addEventListener('click', (e) => {
+            if (state.energy >= state.tapVal) {
+                state.balance += state.tapVal;
+                state.energy -= state.tapVal;
+                state.unsynced += state.tapVal;
+                spawnText(e, `+${state.tapVal}`);
+                if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            }
+        });
+
+        function upgrade(type) {
+            let cost = 0;
+            if (type==='cpu') cost = 5000 + state.cpuLvl*5000;
+            if (type==='ram') cost = 10000 + state.ramLvl*10000;
+            if (type==='ssd') cost = 7500 + state.ssdLvl*7500;
+
+            if (state.balance >= cost) {
+                state.balance -= cost;
+                state.unsynced -= cost;
+                if(type==='cpu') state.cpuLvl++;
+                if(type==='ram') state.ramLvl++;
+                if(type==='ssd') state.ssdLvl++;
+                sync();
+                tg.showAlert("Donanım Güncellendi!");
+            } else tg.showAlert("Yetersiz Puan!");
+        }
+
+        async function claimBonus() {
+            if(!state.canBonus || !sb) return;
+            const { data, error } = await sb.rpc('claim_daily_bonus', { p_telegram_id: state.userId });
+            if (!error && data?.[0]) {
+                tg.showAlert(`Tebrikler! ${data[0].out_reward.toLocaleString()} puan aldın.`);
+                sync();
+            } else tg.showAlert(error?.message || "Hata oluştu.");
+        }
+
+        async function openPanel(id) {
+            closePanels();
+            document.getElementById(`panel-${id}`).classList.add('visible');
+            if (id==='rank' && sb) {
+                const { data } = await sb.rpc('get_leaderboard');
+                const list = document.getElementById('rank-list');
+                list.innerHTML = data.map((u, i) => `
+                    <div class="rank-item">
+                        <span class="rank-pos">#${i+1}</span>
+                        <span class="rank-user">${u.username}</span>
+                        <span class="rank-val">${u.balance.toLocaleString()}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function closePanels() { document.querySelectorAll('.panel').forEach(p => p.classList.remove('visible')); }
+        function spawnText(e, txt) {
+            const el = document.createElement('div'); el.className='tap-feedback'; el.textContent=txt;
+            el.style.left=`${e.clientX-10}px`; el.style.top=`${e.clientY-40}px`;
+            document.body.appendChild(el); setTimeout(()=>el.remove(), 800);
+        }
+        function shareRef() { tg.openTelegramLink(`https://t.me/share/url?url=https://t.me/Loading_of_bot/app?startapp=${state.userId}`); }
+        function copyRef() { navigator.clipboard.writeText(`https://t.me/Loading_of_bot/app?startapp=${state.userId}`).then(()=>tg.showAlert('Kopyalandı!')); }
+
+        function handleAds() {
+            // Adsgram Block ID'ni buraya yazmalısın (Adsgram dashboard'dan alacaksın)
+            const blockId = "YOUR_ADSGRAM_BLOCK_ID"; 
+            if (!window.Adsgram) return tg.showAlert("Reklam servisi yüklenemedi.");
+
+            const AdController = window.Adsgram.init({ blockId: blockId });
+            AdController.show().then(() => {
+                state.energy = state.maxEnergy;
+                sync();
+                tg.showAlert("Harika! Enerjin tamamen doldu.");
+            }).catch((err) => {
+                tg.showAlert("Şu an izlenecek reklam yok veya bir hata oluştu.");
+                console.error(err);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
