@@ -381,8 +381,8 @@
         function copyRef() { navigator.clipboard.writeText(`https://t.me/Loading_of_bot/app?startapp=${state.userId}`).then(()=>tg.showAlert('Kopyalandı!')); }
 
         function handleAds() {
-            // Adsgram Block ID'ni buraya yazmalısın (Adsgram dashboard'dan alacaksın)
-            const blockId = "YOUR_ADSGRAM_BLOCK_ID"; 
+            // Adsgram Block ID eklendi
+            const blockId = "25018"; 
             if (!window.Adsgram) return tg.showAlert("Reklam servisi yüklenemedi.");
 
             const AdController = window.Adsgram.init({ blockId: blockId });
