@@ -6,7 +6,7 @@
     <title>Loading...</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://adsgram.ai/sdk.js"></script>
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -383,25 +383,26 @@
         function handleAds() {
             const blockId = "25018"; 
             
-            // Adsgram SDK kontrolü
             if (!window.Adsgram) {
-                tg.showAlert("Reklam SDK yüklenemedi. Lütfen internet bağlantınızı kontrol edin.");
+                tg.showAlert("Reklam SDK yüklenemedi. HTTPS üzerinden bağlandığınızdan emin olun.");
                 return;
             }
 
-            // Adsgram Başlatma
             const AdController = window.Adsgram.init({ blockId: blockId });
             
             AdController.show().then((result) => {
-                // Reklam başarıyla izlendi
-                state.energy = state.maxEnergy;
-                sync();
-                tg.showAlert("Tebrikler! Enerjin tamamen dolduruldu.");
-                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                if (result.done) {
+                    // Kullanıcı reklamı sonuna kadar izledi
+                    state.energy = state.maxEnergy;
+                    sync();
+                    tg.showAlert("Tebrikler! Enerjin tamamen dolduruldu.");
+                    if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                } else {
+                    tg.showAlert("Ödül kazanmak için reklamı sonuna kadar izlemelisiniz.");
+                }
             }).catch((result) => {
-                // Reklam izlenemedi (Hata, Skip veya No Ads)
-                let errorMsg = "Şu an uygun reklam yok. Biraz sonra tekrar deneyin.";
-                if (result.error) errorMsg = "Reklam sunucusuyla bağlantı kurulamadı.";
+                let errorMsg = "Şu an uygun reklam yok.";
+                if (result.error) errorMsg = "Reklam sunucusu hatası (HTTP 403/404).";
                 tg.showAlert(errorMsg);
                 console.error("Adsgram Error:", result);
             });
