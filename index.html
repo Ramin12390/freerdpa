@@ -268,7 +268,7 @@
             }
         }
 
-        async function sync() {
+        async function sync(isAdWatched = false) {
             if (state.isSyncing || !sb) return;
             state.isSyncing = true;
             document.getElementById('sync-status').textContent = 'SYNC...';
@@ -277,7 +277,8 @@
                 p_telegram_id: state.userId, p_username: state.userName,
                 p_click_count: state.unsynced, p_cpu_level: state.cpuLvl,
                 p_ram_level: state.ramLvl, p_ssd_level: state.ssdLvl,
-                p_referrer_id: state.referrerId
+                p_referrer_id: state.referrerId,
+                p_full_energy: isAdWatched // YENİ: Veritabanına enerji fulle komutu
             });
 
             if (!error && data?.[0]) {
@@ -401,8 +402,7 @@
             AdController.show().then((result) => {
                 if (result.done) {
                     // Kullanıcı reklamı sonuna kadar izledi
-                    state.energy = state.maxEnergy;
-                    sync();
+                    sync(true); // YENİ: Veritabanına enerji fulle komutunu gönder
                     tg.showAlert("Tebrikler! Enerjin tamamen dolduruldu.");
                     if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 } else {
