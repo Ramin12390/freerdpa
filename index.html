@@ -282,15 +282,15 @@
 
             if (!error && data?.[0]) {
                 const r = data[0];
-                state.balance = r.out_balance;
-                state.energy = r.out_energy;
-                state.maxEnergy = r.out_max_energy;
-                state.cpuLvl = r.out_cpu_level;
-                state.ramLvl = r.out_ram_level;
-                state.ssdLvl = r.out_ssd_level;
-                state.pph = r.out_profit_per_hour;
-                state.streak = r.out_streak;
-                state.canBonus = r.out_can_check_in;
+                state.balance = r.out_balance || 0;
+                state.cpuLvl = r.out_cpu_level || 0;
+                state.ramLvl = r.out_ram_level || 0;
+                state.ssdLvl = r.out_ssd_level || 0;
+                state.maxEnergy = r.out_max_energy || (1000 + state.ramLvl * 500);
+                state.energy = r.out_energy ?? state.maxEnergy;
+                state.pph = r.out_profit_per_hour || 0;
+                state.streak = r.out_streak || 0;
+                state.canBonus = r.out_can_check_in || false;
                 state.tapVal = 1 + state.ssdLvl;
                 state.unsynced = 0;
                 refreshUI();
