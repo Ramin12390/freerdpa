@@ -222,7 +222,8 @@
             balance: 0, energy: 1000, maxEnergy: 1000,
             cpuLvl: 0, ramLvl: 0, ssdLvl: 0,
             pph: 0, tapVal: 1, streak: 0, canBonus: false,
-            userId: 0, userName: '', unsynced: 0, isSyncing: false
+            userId: 0, userName: '', unsynced: 0, isSyncing: false,
+            referrerId: null
         };
 
         const ui = {
@@ -253,6 +254,12 @@
             }
             ui.user.textContent = `@${state.userName}`;
 
+            // Referans numarasını yakala (?startapp=KOD)
+            const refParam = tg.initDataUnsafe?.start_param;
+            if (refParam && refParam != state.userId) {
+                state.referrerId = parseInt(refParam);
+            }
+
             try { if (sb) await sync(); } catch(e){}
             finally {
                 setInterval(updateLoops, 100);
@@ -269,7 +276,8 @@
             const { data, error } = await sb.rpc('sync_and_click', {
                 p_telegram_id: state.userId, p_username: state.userName,
                 p_click_count: state.unsynced, p_cpu_level: state.cpuLvl,
-                p_ram_level: state.ramLvl, p_ssd_level: state.ssdLvl
+                p_ram_level: state.ramLvl, p_ssd_level: state.ssdLvl,
+                p_referrer_id: state.referrerId
             });
 
             if (!error && data?.[0]) {
